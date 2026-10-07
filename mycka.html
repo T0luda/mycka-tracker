@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Myčka - Sklad tablet</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0fdfa; /* Světlá tyrkysová */
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: none; /* Zabraňuje pull-to-refresh na mobilech pro app-like feel */
+        }
+        
+        /* Moderní skleněný efekt pro modální okna */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+        }
+
+        /* Animace pro otevírání modálů */
+        .modal-enter {
+            animation: modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: scale(0.95) translateY(20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        /* Animace pro dropdown menu */
+        .dropdown-enter {
+            animation: dropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            transform-origin: top right;
+        }
+
+        @keyframes dropdownFadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        /* Skrytí scrollbaru pro čistý vzhled */
+        ::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
+        }
+    </style>
+</head>
+<body class="text-slate-800 pb-32">
+
+    <div id="nameModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center px-4 transition-opacity duration-300">
+        <div class="glass-panel rounded-[2rem] p-8 w-full max-w-sm modal-enter">
+            <div class="flex justify-center mb-6">
+                <div class="w-20 h-20 bg-gradient-to-br from-teal-400 to-blue-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-teal-500/30">
+                    <i class="fa-solid fa-user-astronaut text-3xl"></i>
+                </div>
+            </div>
+            <h2 class="text-2xl font-extrabold text-center mb-2">Vítej u myčky!</h2>
+            <p class="text-sm text-center text-slate-500 mb-8">Zadej své jméno, abychom věděli, kdo dnes zapíná mytí.</p>
+            <input type="text" id="usernameInput" placeholder="Tvoje jméno..." class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 mb-6 focus:outline-none focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium text-lg">
+            <button id="saveNameBtn" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-4 px-4 rounded-2xl transition-transform active:scale-95 shadow-xl shadow-slate-900/20 text-lg">
+                Začít používat
+            </button>
+        </div>
+    </div>
+
+    <div class="max-w-md mx-auto pt-8 px-5">
+        <header class="flex items-center justify-between mb-10">
+            <div class="flex items-center gap-4">
+                <div class="w-14 h-14 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30 text-white">
+                    <i class="fa-solid fa-sink text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-3xl font-extrabold tracking-tight text-slate-900">Myčka</h1>
+                    <p class="text-sm text-teal-600 font-semibold tracking-wide uppercase">Sklad tablet</p>
+                </div>
+            </div>
+            <div class="text-right flex flex-col items-end">
+                <div class="text-[10px] text-slate-400 uppercase tracking-wider font-bold mb-1">Přihlášen(a)</div>
+                <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full shadow-sm border border-slate-100">
+                    <i class="fa-solid fa-circle-user text-teal-500"></i>
+                    <span id="displayUsername" class="text-sm font-bold text-slate-700">...</span>
+                </div>
+            </div>
+        </header>
+
+        <section class="mb-12">
+            <div class="flex justify-between items-end mb-5 px-1">
+                <h2 class="text-xl font-bold flex items-center gap-2 text-slate-800">
+                    <i class="fa-solid fa-boxes-stacked text-teal-500"></i>
+                    Sklad
+                </h2>
+                <span class="text-xs font-semibold text-slate-400">Max 50 ks</span>
+            </div>
+            
+            <div id="inventoryContainer" class="space-y-4">
+                <!-- Zde se dynamicky vykreslí karty pomocí JavaScriptu -->
+            </div>
+        </section>
+
+        <section>
+            <h2 class="text-xl font-bold flex items-center gap-2 mb-5 px-1 text-slate-800">
+                <i class="fa-solid fa-clock-rotate-left text-blue-500"></i>
+                Historie
+            </h2>
+            <div class="glass-panel rounded-3xl p-5 mb-8">
+                <div id="historyContainer" class="space-y-0 relative before:absolute before:inset-y-2 before:left-[19px] before:w-[2px] before:bg-slate-100">
+                    <!-- Zde se dynamicky vykreslí historie -->
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div class="fixed bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-[#f0fdfa] via-[#f0fdfa] to-transparent pointer-events-none z-10 flex justify-center pb-8">
+        <button id="mainFabBtn" class="pointer-events-auto bg-slate-900 text-white font-bold text-lg py-5 px-8 rounded-full shadow-2xl shadow-slate-900/40 transform transition-transform active:scale-95 flex items-center justify-center gap-3 w-full max-w-sm">
+            <i class="fa-solid fa-power-off text-teal-400 text-xl"></i>
+            Zapnout myčku
+        </button>
+    </div>
+
+    <div id="actionModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center sm:px-4">
+        <div class="bg-white w-full sm:max-w-sm rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 pb-10 sm:pb-6 shadow-2xl modal-enter relative">
+            
+            <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6 sm:hidden"></div> <!-- Handle pro mobily -->
+
+            <h2 class="text-2xl font-bold text-center mb-1 text-slate-900">Nakrmit myčku</h2>
+            <p id="actionModalSubtitle" class="text-sm text-slate-500 text-center mb-6 font-medium">Automatický výběr pro dnešní den</p>
+            
+            <!-- Hlavní karta vybrané tablety -->
+            <div class="relative bg-slate-50 border-2 border-slate-100 rounded-3xl p-6 mb-6 flex flex-col items-center justify-center transition-all group hover:border-teal-200">
+                
+                <!-- 3 tečky pro změnu (Kebab menu) -->
+                <button id="menuDotsBtn" class="absolute top-4 right-4 w-10 h-10 flex items-center justify-center text-slate-400 hover:text-slate-700 bg-white hover:bg-slate-100 rounded-full shadow-sm transition-all z-20">
+                    <i class="fa-solid fa-ellipsis-vertical text-lg"></i>
+                </button>
+                
+                <!-- Dropdown (skrytý) -->
+                <div id="dropdownMenu" class="absolute top-14 right-4 bg-white rounded-2xl shadow-xl border border-slate-100 w-52 py-2 hidden z-30 dropdown-enter overflow-hidden">
+                    <div class="px-4 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider bg-slate-50/50">Vybrat jinou</div>
+                    <div id="dropdownItemsContainer">
+                        <!-- Generováno přes JS -->
+                    </div>
+                </div>
+
+                <!-- Ikona a data vybrané tablety -->
+                <div id="selectedTabletIcon" class="w-20 h-20 rounded-[1.5rem] flex items-center justify-center text-white mb-4 shadow-lg shadow-teal-500/20 transition-all transform group-hover:scale-105">
+                    <i class="fa-solid fa-soap text-3xl"></i>
+                </div>
+                <div id="selectedTabletName" class="text-xl font-extrabold text-slate-800">Všední dny</div>
+                
+                <!-- Výrazný odpočet -->
+                <div class="mt-3 bg-red-50 border border-red-100 text-red-600 px-4 py-1.5 rounded-full font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-minus text-xs"></i> 1 ks
+                </div>
+            </div>
+
+            <!-- Tlačítka modálu -->
+            <div class="flex gap-3">
+                <button id="cancelActionBtn" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-4 rounded-2xl transition-colors">
+                    Zrušit
+                </button>
+                <button id="confirmActionBtn" class="flex-[2] bg-teal-500 hover:bg-teal-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-teal-500/30 transition-colors flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-check"></i> Potvrdit
+                </button>
+            </div><!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Myčka - Sklad tablet</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0fdfa; /* Světlá tyrkysová */
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: none;
+        }
+        
+        /* Moderní skleněný efekt */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+        }
+
+        /* Animace modálů */
+        .modal-enter {
+            animation: modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: scale(0.95) translateY(20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .dropdown-enter {
+            animation: dropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            transform-origin: top right;
+        }
+
+        @keyframes dropdownFadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        ::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
+        }
+    </style>
+</head>
+<body class="text-slate-800 pb-32">
+
+    <div id="nameModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center px-4 transition-opacity duration-300 hidden">
+        <div class="glass-panel rounded-[2rem] p-8 w-full max-w-sm modal-enter">
+            <div class="flex justify-center mb-6">
+                <div class="w-20 h-20 bg-gradient-to-br from-teal-400 to-blue-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-teal-500/30">
+                    <i class="fa-solid fa-user-astronaut text-3xl"></i>
+                </div>
+            </div>
+            <h2 class="text-2xl font-extrabold text-center mb-2">Vítej u myčky!</h2>
+            <p class="text-sm text-center text-slate-500 mb-8">Zadej své jméno, abychom věděli, kdo manipuluje se skladem.</p>
+            <input type="text" id="usernameInput" placeholder="Tvoje jméno..." class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 mb-6 focus:outline-none focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium text-lg">
+            <button id="saveNameBtn" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-4 px-4 rounded-2xl transition-transform active:scale-95 shadow-xl shadow-slate-900/20 text-lg">
+                Začít používat
+            </button>
+        </div>
+    </div>
+
+    <div class="max-w-md mx-auto pt-8 px-5 relative">
+        
+        <!-- Notifikace o připojování k Firebase -->
+        <div id="connectionStatus" class="absolute top-0 left-0 right-0 text-center text-xs font-bold bg-amber-100 text-amber-700 py-1 rounded-b-xl shadow-sm z-40 transition-all">
+            Připojování k databázi... (Nastavte Firebase Config)
+        </div>
+
+        <header class="flex items-center justify-between mb-10 mt-6">
+            <div class="flex items-center gap-4">
+                <div class="w-14 h-14 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30 text-white">
+                    <i class="fa-solid fa-sink text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-3xl font-extrabold tracking-tight text-slate-900">Myčka</h1>
+                    <p class="text-sm text-teal-600 font-semibold tracking-wide uppercase">Sklad tablet</p>
+                </div>
+            </div>
+            <div class="text-right flex flex-col items-end">
+                <div class="text-[10px] text-slate-400 uppercase tracking-wider font-bold mb-1">Přihlášen(a)</div>
+                <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full shadow-sm border border-slate-100">
+                    <i class="fa-solid fa-circle-user text-teal-500"></i>
+                    <span id="displayUsername" class="text-sm font-bold text-slate-700">...</span>
+                </div>
+            </div>
+        </header>
+
+        <section class="mb-12">
+            <div class="flex justify-between items-end mb-5 px-1">
+                <h2 class="text-xl font-bold flex items-center gap-2 text-slate-800">
+                    <i class="fa-solid fa-boxes-stacked text-teal-500"></i>
+                    Sklad
+                </h2>
+                <span class="text-xs font-semibold text-slate-400">Doporučené max: 50 ks</span>
+            </div>
+            
+            <div id="inventoryContainer" class="space-y-4">
+                <div class="text-center py-10 text-slate-400 font-medium">
+                    <i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i><br>
+                    Načítám stav skladu...
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2 class="text-xl font-bold flex items-center gap-2 mb-5 px-1 text-slate-800">
+                <i class="fa-solid fa-clock-rotate-left text-blue-500"></i>
+                Historie
+            </h2>
+            <div class="glass-panel rounded-3xl p-5 mb-8">
+                <div id="historyContainer" class="space-y-0 relative before:absolute before:inset-y-2 before:left-[19px] before:w-[2px] before:bg-slate-100 min-h-[100px]">
+                    <div class="text-center py-6 text-slate-400 font-medium z-10 relative">
+                        <i class="fa-solid fa-spinner fa-spin text-xl mb-2"></i><br>
+                        Načítám historii...
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Plovoucí hlavní tlačítko -->
+    <div class="fixed bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-[#f0fdfa] via-[#f0fdfa] to-transparent pointer-events-none z-10 flex justify-center pb-8">
+        <button id="mainFabBtn" disabled class="pointer-events-auto bg-slate-400 text-white font-bold text-lg py-5 px-8 rounded-full shadow-2xl transform transition-transform active:scale-95 flex items-center justify-center gap-3 w-full max-w-sm">
+            <i class="fa-solid fa-power-off text-xl"></i>
+            Zapnout myčku
+        </button>
+    </div>
+
+    <div id="actionModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center sm:px-4">
+        <div class="bg-white w-full sm:max-w-sm rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 pb-10 sm:pb-6 shadow-2xl modal-enter relative">
+            <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6 sm:hidden"></div>
+            
+            <h2 class="text-2xl font-bold text-center mb-1 text-slate-900">Nakrmit myčku</h2>
+            <p id="actionModalSubtitle" class="text-sm text-slate-500 text-center mb-6 font-medium">Automatický výběr pro dnešní den</p>
+            
+            <div class="relative bg-slate-50 border-2 border-slate-100 rounded-3xl p-6 mb-6 flex flex-col items-center justify-center transition-all group">
+                <button id="menuDotsBtn" class="absolute top-4 right-4 w-10 h-10 flex items-center justify-center text-slate-400 hover:text-slate-700 bg-white hover:bg-slate-100 rounded-full shadow-sm transition-all z-20">
+                    <i class="fa-solid fa-ellipsis-vertical text-lg"></i>
+                </button>
+                
+                <!-- Dropdown s výběrem jiných tablet -->
+                <div id="dropdownMenu" class="absolute top-14 right-4 bg-white rounded-2xl shadow-xl border border-slate-100 w-52 py-2 hidden z-30 dropdown-enter overflow-hidden">
+                    <div class="px-4 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider bg-slate-50/50">Vybrat jinou</div>
+                    <div id="dropdownItemsContainer"></div>
+                </div>
+
+                <div id="selectedTabletIcon" class="w-20 h-20 rounded-[1.5rem] flex items-center justify-center text-white mb-4 shadow-lg transition-all transform group-hover:scale-105">
+                    <!-- Ikona přes JS -->
+                </div>
+                <div id="selectedTabletName" class="text-xl font-extrabold text-slate-800">Načítám...</div>
+                
+                <div class="mt-3 bg-red-50 border border-red-100 text-red-600 px-4 py-1.5 rounded-full font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-minus text-xs"></i> 1 ks
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <button id="cancelActionBtn" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-4 rounded-2xl transition-colors">Zrušit</button>
+                <button id="confirmActionBtn" class="flex-[2] bg-teal-500 hover:bg-teal-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-teal-500/30 transition-colors flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-check"></i> Potvrdit
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modální okno pro doplnění skladu -->
+    <div id="restockModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center px-4 transition-opacity duration-300">
+        <div class="glass-panel rounded-[2.5rem] p-6 w-full max-w-sm modal-enter shadow-2xl relative">
+            <h2 class="text-2xl font-bold text-center mb-1 text-slate-900">Doplnit zásoby</h2>
+            <p id="restockModalSubtitle" class="text-sm text-teal-600 text-center mb-6 font-bold uppercase tracking-wide">Typ tablety</p>
+
+            <div class="mb-4">
+                <label class="block text-sm font-bold text-slate-700 mb-2 pl-2">Kolik kusů přidáváš?</label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-plus text-teal-500"></i>
+                    </div>
+                    <input type="number" id="restockAmountInput" value="30" min="1" class="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-5 py-4 focus:outline-none focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-bold text-lg text-slate-800">
+                </div>
+            </div>
+
+            <div class="mb-8">
+                <label class="block text-sm font-bold text-slate-700 mb-2 pl-2">Další detaily (Značka, cena...)</label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-tag text-slate-400"></i>
+                    </div>
+                    <input type="text" id="restockDetailsInput" placeholder="Např. Somat Gold, 399 Kč" class="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-5 py-4 focus:outline-none focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium text-slate-700">
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <button id="cancelRestockBtn" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-4 rounded-2xl transition-colors">Zrušit</button>
+                <button id="confirmRestockBtn" class="flex-[2] bg-teal-500 hover:bg-teal-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-teal-500/30 transition-colors flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-download"></i> Uložit
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Importy z Firebase v11.6.1 (kompatibilní a doporučené pro tento systém)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // ==========================================
+        // TVOJE FIREBASE KONFIGURACE (VLOŽ ZDE)
+        // ==========================================
+        const firebaseConfig = {
+             apiKey: "AIzaSyBm-G6EWfvWtG_l9rkNQgCy9tIQCMa1qRc",
+             authDomain: "mycka-98636.firebaseapp.com",
+              projectId: "mycka-98636",
+              storageBucket: "mycka-98636.firebasestorage.app",
+             messagingSenderId: "682097527249",
+              appId: "1:682097527249:web:f41035ff33e10615c878f0",
+            databaseURL: "https://mycka-98636-default-rtdb.europe-west1.firebasedatabase.app"
+        };
+        // ==========================================
+
+        // Konstanty a definice tablet
+        const TABLET_TYPES = {
+            'vsedni': { 
+                id: 'vsedni', name: 'Všední dny', 
+                color: 'from-blue-400 to-blue-500', shadow: 'shadow-blue-500/30',
+                icon: '<i class="fa-solid fa-jug-detergent text-2xl"></i>', iconLarge: '<i class="fa-solid fa-jug-detergent text-4xl"></i>'
+            },
+            'sobota': { 
+                id: 'sobota', name: 'Sobota', 
+                color: 'from-indigo-400 to-purple-500', shadow: 'shadow-purple-500/30',
+                icon: '<i class="fa-solid fa-wine-glass text-2xl"></i>', iconLarge: '<i class="fa-solid fa-wine-glass text-4xl"></i>'
+            },
+            'nedele': { 
+                id: 'nedele', name: 'Neděle', 
+                color: 'from-amber-400 to-orange-500', shadow: 'shadow-orange-500/30',
+                icon: '<i class="fa-solid fa-mug-hot text-2xl"></i>', iconLarge: '<i class="fa-solid fa-mug-hot text-4xl"></i>'
+            }
+        };
+        const MAX_TABLETS = 50;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'mycka-app-v1';
+        
+        // Globální stavy
+        let localUsername = localStorage.getItem('mycka_username') || '';
+        let currentInventory = { vsedni: 0, sobota: 0, nedele: 0 }; // Cache stavu skladu
+        let selectedTypeForAction = 'vsedni';
+        let selectedTypeForRestock = null;
+        let isDropdownOpen = false;
+
+        // Firebase reference
+        let db, auth;
+        let inventoryDocRef, historyCollRef;
+
+        // UI Elementy
+        const mainFabBtn = document.getElementById('mainFabBtn');
+        const connectionStatus = document.getElementById('connectionStatus');
+        
+        // Inicializace Firebase
+        try {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            
+            // Firebase cesty podle povinných pravidel systému pro sdílená data
+            inventoryDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'mycka_state', 'inventory_doc');
+            historyCollRef = collection(db, 'artifacts', appId, 'public', 'data', 'mycka_history');
+
+            // Přihlášení (nutné pro zápis/čtení do Firestore)
+            signInAnonymously(auth).then(() => {
+                connectionStatus.classList.add('-translate-y-full', 'opacity-0');
+                mainFabBtn.disabled = false;
+                mainFabBtn.classList.replace('bg-slate-400', 'bg-slate-900');
+                mainFabBtn.classList.add('shadow-slate-900/40');
+                
+                setupFirestoreListeners();
+            }).catch(e => {
+                showFirebaseError("Chyba autentizace: " + e.message);
+            });
+
+        } catch (e) {
+            showFirebaseError("Firebase není správně nastaven. Doplňte konfigurační údaje.");
+        }
+
+        function showFirebaseError(msg) {
+            console.error(msg);
+            connectionStatus.textContent = msg;
+            connectionStatus.classList.replace('bg-amber-100', 'bg-red-100');
+            connectionStatus.classList.replace('text-amber-700', 'text-red-700');
+        }
+
+        function setupFirestoreListeners() {
+            // Sledování skladu
+            onSnapshot(inventoryDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    currentInventory = docSnap.data();
+                } else {
+                    // Pokud dokument neexistuje, vytvoříme ho s prázdným stavem
+                    setDoc(inventoryDocRef, { vsedni: 0, sobota: 0, nedele: 0 });
+                }
+                renderInventoryUI();
+            }, (error) => {
+                console.error("Chyba při čtení skladu:", error);
+            });
+
+            // Sledování historie (Načteme vše a seřadíme v JS dle pravidel)
+            onSnapshot(historyCollRef, (snapshot) => {
+                const historyData = [];
+                snapshot.forEach(docSnap => {
+                    historyData.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                
+                // Seřazení v paměti (od nejnovějšího)
+                historyData.sort((a, b) => b.timestamp - a.timestamp);
+                renderHistoryUI(historyData);
+            }, (error) => {
+                console.error("Chyba při čtení historie:", error);
+            });
+        }
+
+        function renderInventoryUI() {
+            const container = document.getElementById('inventoryContainer');
+            container.innerHTML = '';
+            
+            Object.values(TABLET_TYPES).forEach(typeDef => {
+                const count = currentInventory[typeDef.id] || 0;
+                const isLow = count < 5;
+                const percentage = Math.min(100, Math.max(0, (count / MAX_TABLETS) * 100));
+                
+                const borderClass = isLow ? 'border-red-300 shadow-red-100/50' : 'border-slate-100 shadow-slate-200/40';
+                const bgClass = isLow ? 'bg-red-50/30' : 'bg-white';
+                
+                const card = document.createElement('div');
+                card.className = `rounded-3xl p-5 border-2 shadow-sm relative overflow-hidden ${borderClass} ${bgClass} transition-colors duration-300`;
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-4 relative z-10">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br ${typeDef.color} shadow-lg ${typeDef.shadow} flex items-center justify-center text-white">
+                                ${typeDef.icon}
+                            </div>
+                            <div>
+                                <div class="font-extrabold text-slate-800 text-lg leading-tight">${typeDef.name}</div>
+                                <div class="text-sm font-bold mt-0.5 ${isLow ? 'text-red-500 animate-pulse' : 'text-slate-500'}">
+                                    ${count} ks
+                                    ${isLow ? '<i class="fa-solid fa-circle-exclamation ml-1"></i>' : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="window.triggerRestock('${typeDef.id}')" class="text-sm bg-slate-800 hover:bg-slate-900 text-white font-bold py-2 px-4 rounded-xl shadow-md transition-transform active:scale-95 z-20 relative">
+                            <i class="fa-solid fa-plus text-xs mr-1"></i> Doplnit
+                        </button>
+                    </div>
+                    <div class="w-full bg-slate-200/70 rounded-full h-3 relative overflow-hidden z-10">
+                        <div class="h-full rounded-full transition-all duration-700 ease-out ${isLow ? 'bg-red-500' : 'bg-teal-500'}" style="width: ${percentage}%"></div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function renderHistoryUI(historyList) {
+            const container = document.getElementById('historyContainer');
+            container.innerHTML = '';
+            
+            if (historyList.length === 0) {
+                container.innerHTML = `
+                    <div class="text-sm font-medium text-slate-400 text-center py-6 flex flex-col items-center gap-2 z-10 relative bg-white rounded-2xl border border-slate-100">
+                        <i class="fa-solid fa-clipboard-list text-2xl text-slate-300"></i>
+                        Zatím je tu prázdno.
+                    </div>`;
+                return;
+            }
+
+            // Zobrazíme maximálně posledních 20 záznamů
+            historyList.slice(0, 20).forEach((item) => {
+                const typeDef = TABLET_TYPES[item.type] || TABLET_TYPES['vsedni'];
+                const date = new Date(item.timestamp);
+                const today = new Date();
+                const isToday = date.getDate() === today.getDate() && date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear();
+                const hours = date.getHours().toString().padStart(2, '0');
+                const minutes = date.getMinutes().toString().padStart(2, '0');
+                const timeStr = isToday ? `Dnes v ${hours}:${minutes}` : `${date.getDate()}.${date.getMonth()+1}. ${hours}:${minutes}`;
+
+                const entry = document.createElement('div');
+                entry.className = "relative pl-12 py-3 mb-2 last:mb-0 group z-10";
+                
+                let iconHtml = '';
+                let actionTextHtml = '';
+
+                if (item.action === 'restock') {
+                    iconHtml = `
+                        <div class="absolute left-0 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center text-white ring-[6px] ring-white z-10 shadow-sm shadow-green-500/30">
+                            <i class="fa-solid fa-box-open"></i>
+                        </div>`;
+                    const detailsStr = item.details ? `<div class="mt-1 text-xs text-slate-400 italic"><i class="fa-solid fa-tag text-[10px] mr-1"></i>${item.details}</div>` : '';
+                    actionTextHtml = `
+                        <div class="text-slate-500 font-medium flex items-center gap-1.5 flex-wrap">
+                            Doplnil(a) <i class="fa-solid fa-arrow-right text-[10px] text-slate-300"></i> <span class="text-slate-700 font-bold">${typeDef.name}</span> <span class="text-emerald-600 font-extrabold bg-emerald-50 px-1.5 rounded">(+${item.amount} ks)</span>
+                        </div>
+                        ${detailsStr}
+                    `;
+                } else {
+                    iconHtml = `
+                        <div class="absolute left-0 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-gradient-to-br ${typeDef.color} flex items-center justify-center text-white ring-[6px] ring-white z-10 shadow-sm ${typeDef.shadow}">
+                            ${typeDef.icon}
+                        </div>`;
+                    actionTextHtml = `
+                        <div class="text-slate-500 font-medium flex items-center gap-1.5">
+                            Zapnul(a) myčku <i class="fa-solid fa-arrow-right text-[10px] text-slate-300"></i> <span class="text-slate-700 font-bold">${typeDef.name}</span>
+                        </div>
+                    `;
+                }
+                
+                entry.innerHTML = `
+                    ${iconHtml}
+                    <div class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm text-sm transition-all group-hover:shadow-md group-hover:border-slate-200">
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="font-extrabold text-slate-800">${item.user}</span>
+                            <span class="text-xs font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-md">${timeStr}</span>
+                        </div>
+                        ${actionTextHtml}
+                    </div>
+                `;
+                container.appendChild(entry);
+            });
+        }
+
+        const nameModal = document.getElementById('nameModal');
+        const displayUsername = document.getElementById('displayUsername');
+
+        function initUser() {
+            if (!localUsername) {
+                nameModal.classList.remove('hidden');
+            } else {
+                displayUsername.textContent = localUsername;
+            }
+        }
+
+        document.getElementById('saveNameBtn').addEventListener('click', () => {
+            const inputVal = document.getElementById('usernameInput').value.trim();
+            if (inputVal) {
+                localUsername = inputVal;
+                localStorage.setItem('mycka_username', inputVal);
+                displayUsername.textContent = localUsername;
+                nameModal.style.opacity = '0';
+                setTimeout(() => nameModal.classList.add('hidden'), 300);
+            }
+        });
+
+        // Logika pro Doplnění skladu (Restock)
+        const restockModal = document.getElementById('restockModal');
+        const restockAmountInput = document.getElementById('restockAmountInput');
+        const restockDetailsInput = document.getElementById('restockDetailsInput');
+
+        // Exponování do window objektu pro onclick v generovaném HTML
+        window.triggerRestock = function(typeId) {
+            selectedTypeForRestock = typeId;
+            document.getElementById('restockModalSubtitle').textContent = TABLET_TYPES[typeId].name;
+            restockAmountInput.value = '30';
+            restockDetailsInput.value = '';
+            restockModal.classList.remove('hidden');
+        };
+
+        document.getElementById('cancelRestockBtn').addEventListener('click', () => {
+            restockModal.classList.add('hidden');
+        });
+
+        document.getElementById('confirmRestockBtn').addEventListener('click', async () => {
+            if (!auth || !auth.currentUser) return; // Zabezpečení proti zápisu bez přihlášení
+            
+            const amount = parseInt(restockAmountInput.value) || 0;
+            const details = restockDetailsInput.value.trim();
+
+            if (amount <= 0) {
+                restockAmountInput.classList.add('border-red-500', 'translate-x-2');
+                setTimeout(() => restockAmountInput.classList.remove('translate-x-2', 'border-red-500'), 200);
+                return;
+            }
+
+            const currentCount = currentInventory[selectedTypeForRestock] || 0;
+            
+            try {
+                // 1. Zápis nové hodnoty skladu
+                await setDoc(inventoryDocRef, {
+                    [selectedTypeForRestock]: currentCount + amount
+                }, { merge: true });
+
+                // 2. Vytvoření záznamu v historii
+                await addDoc(historyCollRef, {
+                    action: 'restock',
+                    user: localUsername || 'Neznámý uživatel',
+                    type: selectedTypeForRestock,
+                    amount: amount,
+                    details: details,
+                    timestamp: Date.now()
+                });
+
+                restockModal.classList.add('hidden');
+            } catch (error) {
+                console.error("Chyba při doplňování skladu:", error);
+            }
+        });
+
+        const actionModal = document.getElementById('actionModal');
+        const dropdownMenu = document.getElementById('dropdownMenu');
+
+        function getAutoSelectedType() {
+            const day = new Date().getDay();
+            if (day === 0) return 'nedele';
+            if (day === 6) return 'sobota';
+            return 'vsedni';
+        }
+
+        function updateActionModalCard(typeId) {
+            const typeDef = TABLET_TYPES[typeId];
+            const iconEl = document.getElementById('selectedTabletIcon');
+            iconEl.className = `w-24 h-24 rounded-[2rem] flex items-center justify-center text-white mb-4 shadow-xl transition-all transform group-hover:scale-105 bg-gradient-to-br ${typeDef.color} ${typeDef.shadow}`;
+            iconEl.innerHTML = typeDef.iconLarge;
+            document.getElementById('selectedTabletName').textContent = typeDef.name;
+        }
+
+        function buildDropdownMenu() {
+            const container = document.getElementById('dropdownItemsContainer');
+            container.innerHTML = '';
+            Object.values(TABLET_TYPES).forEach(typeDef => {
+                if (typeDef.id === selectedTypeForAction) return;
+                
+                const item = document.createElement('button');
+                item.className = "w-full text-left px-4 py-3 hover:bg-slate-50 flex items-center gap-3 transition-colors text-sm font-bold text-slate-700 border-b border-slate-50 last:border-0";
+                item.innerHTML = `<div class="w-8 h-8 rounded-lg bg-gradient-to-br ${typeDef.color} flex items-center justify-center text-white shadow-sm">${typeDef.icon}</div>${typeDef.name}`;
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectedTypeForAction = typeDef.id;
+                    updateActionModalCard(selectedTypeForAction);
+                    document.getElementById('actionModalSubtitle').textContent = 'Manuálně vybráno';
+                    dropdownMenu.classList.add('hidden');
+                    isDropdownOpen = false;
+                });
+                container.appendChild(item);
+            });
+        }
+
+        mainFabBtn.addEventListener('click', () => {
+            if (mainFabBtn.disabled) return;
+            selectedTypeForAction = getAutoSelectedType();
+            updateActionModalCard(selectedTypeForAction);
+            document.getElementById('actionModalSubtitle').textContent = 'Automatický výběr pro dnešní den';
+            dropdownMenu.classList.add('hidden');
+            isDropdownOpen = false;
+            actionModal.classList.remove('hidden');
+        });
+
+        document.getElementById('cancelActionBtn').addEventListener('click', () => {
+            actionModal.classList.add('hidden');
+        });
+
+        document.getElementById('menuDotsBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            isDropdownOpen = !isDropdownOpen;
+            if (isDropdownOpen) {
+                buildDropdownMenu();
+                dropdownMenu.classList.remove('hidden');
+            } else {
+                dropdownMenu.classList.add('hidden');
+            }
+        });
+
+        // Zápis použití do Firebase
+        document.getElementById('confirmActionBtn').addEventListener('click', async () => {
+            if (!auth || !auth.currentUser) return;
+
+            const currentCount = currentInventory[selectedTypeForAction] || 0;
+            
+            if (currentCount <= 0) {
+                const card = actionModal.querySelector('.bg-slate-50');
+                card.classList.add('border-red-500', 'translate-x-2');
+                setTimeout(() => card.classList.remove('translate-x-2', 'border-red-500'), 200);
+                return;
+            }
+
+            try {
+                // 1. Odečtení tablety ze skladu
+                await setDoc(inventoryDocRef, {
+                    [selectedTypeForAction]: Math.max(0, currentCount - 1)
+                }, { merge: true });
+
+                // 2. Zápis do historie
+                await addDoc(historyCollRef, {
+                    action: 'use',
+                    user: localUsername || 'Neznámý uživatel',
+                    type: selectedTypeForAction,
+                    timestamp: Date.now()
+                });
+
+                actionModal.classList.add('hidden');
+            } catch (error) {
+                console.error("Chyba při použití tablety:", error);
+            }
+        });
+
+        // Start
+        window.addEventListener('DOMContentLoaded', initUser);
+
+    </script>
+</body>
+</html>
+        </div>
+    </div>
+
+    <script>
+        // Definice typů tablet s ikonami a barvami
+        const TABLET_TYPES = {
+            'vsedni': { 
+                id: 'vsedni', 
+                name: 'Všední dny', 
+                color: 'from-blue-400 to-blue-500', 
+                shadow: 'shadow-blue-500/30',
+                icon: '<i class="fa-solid fa-jug-detergent text-2xl"></i>',
+                iconLarge: '<i class="fa-solid fa-jug-detergent text-4xl"></i>'
+            },
+            'sobota': { 
+                id: 'sobota', 
+                name: 'Sobota', 
+                color: 'from-indigo-400 to-purple-500', 
+                shadow: 'shadow-purple-500/30',
+                icon: '<i class="fa-solid fa-wine-glass text-2xl"></i>',
+                iconLarge: '<i class="fa-solid fa-wine-glass text-4xl"></i>'
+            },
+            'nedele': { 
+                id: 'nedele', 
+                name: 'Neděle', 
+                color: 'from-amber-400 to-orange-500', 
+                shadow: 'shadow-orange-500/30',
+                icon: '<i class="fa-solid fa-mug-hot text-2xl"></i>',
+                iconLarge: '<i class="fa-solid fa-mug-hot text-4xl"></i>'
+            }
+        };
+
+        const MAX_TABLETS = 50;
+        
+        // Výchozí DB struktura, pokud LocalStorage je prázdný
+        const defaultDb = {
+            username: '',
+            inventory: { vsedni: 24, sobota: 12, nedele: 3 }, // Předvyplněná data ukážou neděli jako varování
+            history: []
+        };
+
+        let db = JSON.parse(localStorage.getItem('mycka_db')) || defaultDb;
+        let selectedTypeForAction = 'vsedni';
+        let isDropdownOpen = false;
+
+        // Reference na DOM elementy
+        const nameModal = document.getElementById('nameModal');
+        const usernameInput = document.getElementById('usernameInput');
+        const saveNameBtn = document.getElementById('saveNameBtn');
+        const displayUsername = document.getElementById('displayUsername');
+        
+        const inventoryContainer = document.getElementById('inventoryContainer');
+        const historyContainer = document.getElementById('historyContainer');
+        
+        const actionModal = document.getElementById('actionModal');
+        const mainFabBtn = document.getElementById('mainFabBtn');
+        const cancelActionBtn = document.getElementById('cancelActionBtn');
+        const confirmActionBtn = document.getElementById('confirmActionBtn');
+        const menuDotsBtn = document.getElementById('menuDotsBtn');
+        const dropdownMenu = document.getElementById('dropdownMenu');
+        const dropdownItemsContainer = document.getElementById('dropdownItemsContainer');
+        
+        const selectedTabletIcon = document.getElementById('selectedTabletIcon');
+        const selectedTabletName = document.getElementById('selectedTabletName');
+
+        function saveDb() {
+            localStorage.setItem('mycka_db', JSON.stringify(db));
+            renderAll();
+        }
+
+        function renderAll() {
+            renderInventory();
+            renderHistory();
+        }
+
+        function initApp() {
+            if (!db.username) {
+                nameModal.classList.remove('hidden');
+                // Malý timeout pro spuštění css animace
+                setTimeout(() => { nameModal.style.opacity = '1'; }, 10);
+            } else {
+                displayUsername.textContent = db.username;
+                nameModal.classList.add('hidden');
+            }
+            renderAll();
+        }
+
+        saveNameBtn.addEventListener('click', () => {
+            const name = usernameInput.value.trim();
+            if (name.length > 0) {
+                db.username = name;
+                saveDb();
+                displayUsername.textContent = name;
+                
+                // Animace zavření
+                nameModal.style.opacity = '0';
+                setTimeout(() => {
+                    nameModal.classList.add('hidden');
+                }, 300);
+            }
+        });
+
+        function renderInventory() {
+            inventoryContainer.innerHTML = '';
+            
+            Object.values(TABLET_TYPES).forEach(typeDef => {
+                const count = db.inventory[typeDef.id] || 0;
+                const isLow = count < 5; // Pravidlo pro varování
+                const percentage = Math.min(100, Math.max(0, (count / MAX_TABLETS) * 100));
+                
+                const card = document.createElement('div');
+                // Dynamické třídy podle toho, zda je stav kritický
+                const borderClass = isLow ? 'border-red-300 shadow-red-100/50' : 'border-slate-100 shadow-slate-200/40';
+                const bgClass = isLow ? 'bg-red-50/30' : 'bg-white';
+                
+                card.className = `rounded-3xl p-5 border-2 shadow-sm relative overflow-hidden ${borderClass} ${bgClass} transition-colors duration-300`;
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-4 relative z-10">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br ${typeDef.color} shadow-lg ${typeDef.shadow} flex items-center justify-center text-white">
+                                ${typeDef.icon}
+                            </div>
+                            <div>
+                                <div class="font-extrabold text-slate-800 text-lg leading-tight">${typeDef.name}</div>
+                                <div class="text-sm font-bold mt-0.5 ${isLow ? 'text-red-500 animate-pulse' : 'text-slate-500'}">
+                                    ${count} ks
+                                    ${isLow ? '<i class="fa-solid fa-circle-exclamation ml-1"></i>' : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="window.addTablets('${typeDef.id}')" class="text-sm bg-slate-800 hover:bg-slate-900 text-white font-bold py-2 px-4 rounded-xl shadow-md transition-transform active:scale-95">
+                            <i class="fa-solid fa-plus text-xs mr-1"></i> Doplnit
+                        </button>
+                    </div>
+                    
+                    <!-- Progress bar -->
+                    <div class="w-full bg-slate-200/70 rounded-full h-3 relative overflow-hidden z-10">
+                        <div class="h-full rounded-full transition-all duration-700 ease-out ${isLow ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]' : 'bg-teal-500'}" style="width: ${percentage}%"></div>
+                    </div>
+                `;
+                inventoryContainer.appendChild(card);
+            });
+        }
+
+        function renderHistory() {
+            historyContainer.innerHTML = '';
+            
+            if (db.history.length === 0) {
+                historyContainer.innerHTML = `
+                    <div class="text-sm font-medium text-slate-400 text-center py-6 flex flex-col items-center gap-2">
+                        <i class="fa-solid fa-clipboard-list text-2xl text-slate-300"></i>
+                        Zatím jsi myčku nezapnul(a).
+                    </div>`;
+                return;
+            }
+
+            // Omezení na posledních 10 záznamů a otočení (nejnovější nahoře)
+            const displayList = [...db.history].sort((a, b) => b.timestamp - a.timestamp).slice(0, 10);
+
+            displayList.forEach((item, index) => {
+                const typeDef = TABLET_TYPES[item.type] || TABLET_TYPES['vsedni'];
+                const date = new Date(item.timestamp);
+                
+                const today = new Date();
+                const isToday = date.getDate() === today.getDate() && date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear();
+                
+                const hours = date.getHours().toString().padStart(2, '0');
+                const minutes = date.getMinutes().toString().padStart(2, '0');
+                const timeStr = isToday ? `Dnes v ${hours}:${minutes}` : `${date.getDate()}.${date.getMonth()+1}. ${hours}:${minutes}`;
+
+                const entry = document.createElement('div');
+                entry.className = "relative pl-12 py-3 mb-2 last:mb-0 group";
+                
+                entry.innerHTML = `
+                    <div class="absolute left-0 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-gradient-to-br ${typeDef.color} flex items-center justify-center text-white ring-[6px] ring-white z-10 shadow-sm ${typeDef.shadow}">
+                        ${typeDef.icon}
+                    </div>
+                    <div class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm text-sm transition-all group-hover:shadow-md group-hover:border-slate-200">
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="font-extrabold text-slate-800">${item.user}</span>
+                            <span class="text-xs font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-md">${timeStr}</span>
+                        </div>
+                        <div class="text-slate-500 font-medium flex items-center gap-1.5">
+                            Zapnul(a) myčku <i class="fa-solid fa-arrow-right text-[10px] text-slate-300"></i> <span class="text-slate-700 font-bold">${typeDef.name}</span>
+                        </div>
+                    </div>
+                `;
+                historyContainer.appendChild(entry);
+            });
+        }
+
+        // Akce přidání tablet (vyvoláno kliknutím z HTML na tlačítko "Doplnit")
+        window.addTablets = function(typeId) {
+            db.inventory[typeId] = MAX_TABLETS; // Doplní do plna (50)
+            saveDb();
+        };
+
+        function getAutoSelectedType() {
+            const day = new Date().getDay(); // 0 = Ne, 6 = So, 1-5 = Po-Pá
+            if (day === 0) return 'nedele';
+            if (day === 6) return 'sobota';
+            return 'vsedni';
+        }
+
+        function updateModalCard(typeId) {
+            const typeDef = TABLET_TYPES[typeId];
+            
+            // Vymazání předchozích barev
+            selectedTabletIcon.className = `w-24 h-24 rounded-[2rem] flex items-center justify-center text-white mb-4 shadow-xl transition-all transform group-hover:scale-105 bg-gradient-to-br ${typeDef.color} ${typeDef.shadow}`;
+            selectedTabletIcon.innerHTML = typeDef.iconLarge;
+            
+            selectedTabletName.textContent = typeDef.name;
+        }
+
+        // Vykreslení dropdownu (Tři tečky)
+        function buildDropdown() {
+            dropdownItemsContainer.innerHTML = '';
+            Object.values(TABLET_TYPES).forEach(typeDef => {
+                if (typeDef.id === selectedTypeForAction) return; // Skryjeme ten, co už je vybraný
+                
+                const item = document.createElement('button');
+                item.className = "w-full text-left px-4 py-3 hover:bg-slate-50 flex items-center gap-3 transition-colors text-sm font-bold text-slate-700 border-b border-slate-50 last:border-0";
+                item.innerHTML = `
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br ${typeDef.color} flex items-center justify-center text-white shadow-sm">
+                        ${typeDef.icon}
+                    </div>
+                    ${typeDef.name}
+                `;
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectedTypeForAction = typeDef.id;
+                    updateModalCard(selectedTypeForAction);
+                    document.getElementById('actionModalSubtitle').textContent = 'Manuálně vybráno';
+                    closeDropdown();
+                });
+                dropdownItemsContainer.appendChild(item);
+            });
+        }
+
+        function closeDropdown() {
+            isDropdownOpen = false;
+            dropdownMenu.classList.add('hidden');
+        }
+
+        mainFabBtn.addEventListener('click', () => {
+            selectedTypeForAction = getAutoSelectedType();
+            updateModalCard(selectedTypeForAction);
+            document.getElementById('actionModalSubtitle').textContent = 'Automatický výběr pro dnešní den';
+            closeDropdown();
+            actionModal.classList.remove('hidden');
+        });
+
+        cancelActionBtn.addEventListener('click', () => {
+            actionModal.classList.add('hidden');
+        });
+
+        // 3 tečky Kebab menu
+        menuDotsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            isDropdownOpen = !isDropdownOpen;
+            if (isDropdownOpen) {
+                buildDropdown();
+                dropdownMenu.classList.remove('hidden');
+            } else {
+                closeDropdown();
+            }
+        });
+
+        // Kliknutím mimo dropdown se menu zavře
+        actionModal.addEventListener('click', (e) => {
+            if (isDropdownOpen && !dropdownMenu.contains(e.target) && !menuDotsBtn.contains(e.target)) {
+                closeDropdown();
+            }
+        });
+
+        // Potvrzení akce z modálu
+        confirmActionBtn.addEventListener('click', () => {
+            const currentCount = db.inventory[selectedTypeForAction] || 0;
+            
+            if (currentCount <= 0) {
+                // Vizuální chybový otřes (shake) pokud nejsou tablety
+                const card = actionModal.querySelector('.bg-slate-50');
+                card.classList.add('border-red-500', 'translate-x-2');
+                setTimeout(() => card.classList.remove('translate-x-2'), 100);
+                setTimeout(() => card.classList.add('-translate-x-2'), 200);
+                setTimeout(() => card.classList.remove('-translate-x-2', 'border-red-500'), 300);
+                return;
+            }
+
+            // Odejíst ze skladu a přidat do historie
+            db.inventory[selectedTypeForAction] -= 1;
+            db.history.push({
+                user: db.username || 'Neznámý uživatel',
+                type: selectedTypeForAction,
+                timestamp: Date.now()
+            });
+
+            saveDb(); // Uloží do LocalStorage a překreslí
+            actionModal.classList.add('hidden');
+        });
+
+        // Init při načtení
+        window.addEventListener('DOMContentLoaded', initApp);
+
+    </script>
+</body>
+</html>
